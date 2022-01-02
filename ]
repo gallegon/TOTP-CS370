@@ -1,0 +1,68 @@
+import qrcode
+import base64
+import hmac
+import time
+import struct
+import hashlib
+import sys
+from sys import stdout
+from time import sleep
+#TODO refactor code, its a mess here
+
+TIME_STEP = 30
+T0 = 0
+SYS_TIME = int(time.time())
+T = (SYS_TIME - T0) // TIME_STEP
+DIGIT = 6
+
+def hmac_sha1(k, c):
+    #m = struct.pack(">Q", c) # 8 byte int as specified by RFC
+    h = hmac.new(base64.b32decode(k), '', hashlib.sha1)
+    h.update(struct.pack(">Q", c))
+    result = bytearray(h.digest())
+    return result
+
+
+def HOTP(k, c):
+    hmac_result = hmac_sha1(k, c)
+    offset = hmac_result[-1] & 0xf
+    # bin_code comes directly from the RFC specification section 5.4 at this url
+    # https://datatracker.ietf.org/doc/html/rfc4226#section-5.4
+    bin_code = (((hmac_result[offset]  & 0x7f) << 24) | ((hmac_result[offset+1] & 0xff) << 16) | ((hmac_result[offset+2] & 0xff) <<  8) | (hmac_result[offset+3] & 0xff))
+    hotp_pass = bin_code % 10**DIGIT
+    return hotp_pass
+
+
+def TOTP(k):
+    #T = (SYS_TIME - T0) // TIME_STEP
+    totp_pass = HOTP(k, T)
+    return totp_pass
+
+
+secret = 'rengengengeng'
+secret = secret.encode('utf-8')
+secret = base64.b32encode(secret)
+print(secret)
+
+#otpauth://totp/Example:alice@google.com?secret=JBSWY3DPEHPK3PXP&issuer=Example
+#uri_test = 'otpauth://totp/GallegonOTP:alice@google.com?secret='+e+'&issuer=GallegonOTP'
+
+account = 'gallegon@osu.com'
+
+uri = 'otpauth://totp/GallegonOTP:'
+uri += account
+uri += '?secret='
+uri += secret
+uri += '&issuer=GallegonOTP'
+
+
+img = qrcode.make(uri)
+type(img)  # qrcode.image.pil.PilImage
+img.save("./qrtest.jpg")
+
+
+print(TOTP(secret.encode('utf-8')))
+if (T % TIME_STEP == 0)
+    print(TOTP(secret.encode('utf-8')))
+
+#print(HOTP(test_key, b'\x00'))
